@@ -1,0 +1,37 @@
+# Docker 构建忽略文件
+.git/
+.gitignore
+.github/
+.cache/
+logs/
+*.log
+*.pid
+
+# 本地配置（容器通过 volume/environment 注入，不打包进镜像）
+.env
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# 启动脚本（容器内不需要）
+run.sh
+run.bat
+
+# 文档
+README.md
+.env.example
+
+# Docker 自身文件（避免递归）
+Dockerfile
+docker-compose.yml
+.dockerignore

@@ -1,0 +1,25 @@
+# ============================================================
+#  mypac Docker Compose
+#  用法：docker compose up -d
+# ============================================================
+services:
+  mypac:
+    build: .
+    container_name: mypac
+    restart: unless-stopped
+    ports:
+      - "10390:10390"
+    environment:
+      # 注意：容器内通过环境变量覆盖 .env（server.py 的 parse_env 读的是文件，
+      # 但容器场景更推荐用 environment 注入）。这里同时挂载 .env 文件。
+      - PAC_PORT=10390
+      - PROXY_TARGET=127.0.0.1:7890
+      - LOG_RETAIN_DAYS=7
+      - TZ=Asia/Shanghai
+    volumes:
+      # 挂载本地 .env（如果存在则覆盖容器内的默认配置）
+      - ./.env:/app/.env:ro
+      # 日志持久化到宿主机
+      - ./.cache/logs:/app/.cache/logs
+      # PAC 规则热更新（修改后无需重启容器）
+      - ./proxy.pac:/app/proxy.pac:ro
