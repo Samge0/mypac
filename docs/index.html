@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mypac — 轻量级 PAC 自动代理服务</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            400: '#6b5ff8',
+                            500: '#4b41d8',
+                            600: '#3a2db8',
+                            700: '#2a1a98',
+                        },
+                        neutral: {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                            950: '#030712',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Manrope', 'Noto Sans SC', 'sans-serif'],
+                        serif: ['Noto Serif SC', 'serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px rgba(75, 65, 216, 0.08)',
+                        'glass': '0 8px 32px rgba(75, 65, 216, 0.12)',
+                        'glow': '0 0 40px rgba(75, 65, 216, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, rgba(75, 65, 216, 0.03) 0%, rgba(107, 95, 248, 0.01) 100%);
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(180deg, rgba(75, 65, 216, 0.05) 0%, transparent 100%);
+        }
+        
+        .icon-gradient {
+            background: linear-gradient(135deg, #6b5ff8 0%, #4b41d8 50%, #3a2db8 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(75, 65, 216, 0.15);
+        }
+        
+        .text-gradient {
+            background: linear-gradient(135deg, #4b41d8 0%, #6b5ff8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4b41d8 0%, #3a2db8 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(75, 65, 216, 0.3);
+        }
+        
+        details summary {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+        
+        details[open] summary {
+            margin-bottom: 1rem;
+        }
+        
+        .code-block {
+            background: #1f2937;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-neutral-50 text-neutral-800 antialiased">
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 glass-effect">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <img src="icon.png" alt="mypac" class="w-9 h-9">
+                    <span class="text-xl font-bold text-neutral-900">mypac</span>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-neutral-600 hover:text-brand-500 transition-colors">特性</a>
+                    <a href="#how-it-works" class="text-neutral-600 hover:text-brand-500 transition-colors">工作原理</a>
+                    <a href="#faq" class="text-neutral-600 hover:text-brand-500 transition-colors">FAQ</a>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="https://github.com/samge/mypac" target="_blank" rel="noopener noreferrer" class="text-neutral-600 hover:text-brand-500 transition-colors">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </a>
+                    <a href="#quick-start" class="btn-primary text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        快速开始
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-gradient pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center max-w-4xl mx-auto">
+                <div class="inline-flex items-center space-x-2 bg-brand-50 border border-brand-200 rounded-full px-4 py-2 mb-8">
+                    <span class="w-2 h-2 bg-brand-500 rounded-full animate-pulse"></span>
+                    <span class="text-brand-700 text-sm font-medium">零依赖，启动即用</span>
+                </div>
+                
+                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-neutral-900 mb-6 leading-tight">
+                    轻量级 PAC 自动代理服务
+                </h1>
+                
+                <p class="text-xl text-neutral-600 mb-8 max-w-2xl mx-auto">
+                    内网 IP 直连，其他流量走 <code class="bg-neutral-200 px-2 py-1 rounded text-neutral-800">127.0.0.1:7890</code>
+                    <br>纯 Python 标准库实现，零依赖，启动即用。
+                </p>
+                
+                <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <a href="#quick-start" class="btn-primary text-white px-8 py-3 rounded-lg font-medium text-lg">
+                        立即开始
+                    </a>
+                    <a href="https://github.com/samge/mypac" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-2 text-neutral-700 hover:text-brand-500 transition-colors px-6 py-3 border border-neutral-300 rounded-lg hover:border-brand-300">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        <span>GitHub</span>
+                    </a>
+                </div>
+                
+                <div class="mt-12 p-4 bg-neutral-100 rounded-lg border border-neutral-200">
+                    <div class="text-left">
+                        <div class="text-xs text-neutral-500 mb-2">PAC 地址</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-sm text-neutral-600 mb-1">本机</div>
+                                <code class="text-white">http://127.0.0.1:10390</code>
+                            </div>
+                            <div>
+                                <div class="text-sm text-neutral-600 mb-1">局域网</div>
+                                <code class="text-white">http://&lt;本机IP&gt;:10390</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 px-4 sm:px-6 lg:px-8 gradient-bg">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-neutral-900 mb-4">核心特性</h2>
+                <p class="text-neutral-600 max-w-2xl mx-auto">简单、高效、可靠的 PAC 代理解决方案</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass-effect rounded-xl p-6 card-hover">
+                    <div class="icon-gradient w-14 h-14 rounded-xl flex items-center justify-center mb-4 float-animation">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-neutral-900 mb-2">零依赖</h3>
+                    <p class="text-neutral-600 text-sm">纯 Python 标准库实现，无需安装任何第三方包，启动即用。</p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="glass-effect rounded-xl p-6 card-hover">
+                    <div class="icon-gradient w-14 h-14 rounded-xl flex items-center justify-center mb-4 float-animation" style="animation-delay: 0.2s">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-neutral-900 mb-2">智能代理</h3>
+                    <p class="text-neutral-600 text-sm">白名单制规则，默认走代理，内网直连。智能判断客户端来源，自动选择最佳代理地址。</p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="glass-effect rounded-xl p-6 card-hover">
+                    <div class="icon-gradient w-14 h-14 rounded-xl flex items-center justify-center mb-4 float-animation" style="animation-delay: 0.4s">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-neutral-900 mb-2">热更新</h3>
+                    <p class="text-neutral-600 text-sm">修改 proxy.pac 规则文件后无需重启，每次请求自动重新读取，即时生效。</p>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="glass-effect rounded-xl p-6 card-hover">
+                    <div class="icon-gradient w-14 h-14 rounded-xl flex items-center justify-center mb-4 float-animation" style="animation-delay: 0.6s">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-neutral-900 mb-2">白名单安全</h3>
+                    <p class="text-neutral-600 text-sm">采用白名单制设计，不依赖 dnsResolve 反查，避免 DNS 污染导致的误判。</p>
+                </div>
+                
+                <!-- Feature 5 -->
+                <div class="glass-effect rounded-xl p-6 card-hover">
+                    <div class="icon-gradient w-14 h-14 rounded-xl flex items-center justify-center mb-4 float-animation" style="animation-delay: 0.8s">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-neutral-900 mb-2">Docker 支持</h3>
+                    <p class="text-neutral-600 text-sm">提供完整的 Docker 和 Docker Compose 配置，一键部署，支持容器化环境。</p>
+                </div>
+                
+                <!-- Feature 6 -->
+                <div class="glass-effect rounded-xl p-6 card-hover">
+                    <div class="icon-gradient w-14 h-14 rounded-xl flex items-center justify-center mb-4 float-animation" style="animation-delay: 1s">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-neutral-900 mb-2">日志管理</h3>
+                    <p class="text-neutral-600 text-sm">按天滚动日志，自动清理过期文件，默认保留 7 天，避免磁盘占用过多。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-neutral-900 mb-4">工作原理</h2>
+                <p class="text-neutral-600 max-w-2xl mx-auto">基于 PAC 规则的智能代理分流</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div>
+                    <div class="space-y-6">
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/30 text-white rounded-lg flex items-center justify-center font-bold">1</div>
+                            <div>
+                                <h4 class="font-semibold text-neutral-900 mb-1">客户端请求 PAC</h4>
+                                <p class="text-neutral-600 text-sm">浏览器或系统向 mypac 服务请求 PAC 文件</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/30 text-white rounded-lg flex items-center justify-center font-bold">2</div>
+                            <div>
+                                <h4 class="font-semibold text-neutral-900 mb-1">智能路由决策</h4>
+                                <p class="text-neutral-600 text-sm">根据域名/IP 规则判断：内网直连，外网代理</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/30 text-white rounded-lg flex items-center justify-center font-bold">3</div>
+                            <div>
+                                <h4 class="font-semibold text-neutral-900 mb-1">返回代理策略</h4>
+                                <p class="text-neutral-600 text-sm">返回 DIRECT 或 PROXY 指令，客户端据此连接</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/30 text-white rounded-lg flex items-center justify-center font-bold">4</div>
+                            <div>
+                                <h4 class="font-semibold text-neutral-900 mb-1">智能代理地址</h4>
+                                <p class="text-neutral-600 text-sm">本机访问返回 127.0.0.1，局域网访问返回配置的地址</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass-effect rounded-xl p-6 border border-brand-200">
+                    <div class="text-sm font-mono text-neutral-700 space-y-2">
+                        <div class="text-neutral-500">// 代理规则示例</div>
+                        <div><span class="text-white">if</span> (<span class="text-green-600">/localhost|^127\./</span>.test(host)) <span class="text-blue-600">return</span> <span class="text-white">'DIRECT'</span>;</div>
+                        <div><span class="text-white">if</span> (<span class="text-green-600">/\.local$|\.lan$/</span>.test(host)) <span class="text-blue-600">return</span> <span class="text-white">'DIRECT'</span>;</div>
+                        <div><span class="text-white">if</span> (isPlainHostName(host)) <span class="text-blue-600">return</span> <span class="text-white">'DIRECT'</span>;</div>
+                        <div><span class="text-neutral-500">// 内网 IP 直连</span></div>
+                        <div><span class="text-white">if</span> (isInNet(dnsResolve(host), <span class="text-white">"10.0.0.0"</span>, <span class="text-white">"255.0.0.0"</span>)) <span class="text-blue-600">return</span> <span class="text-white">'DIRECT'</span>;</div>
+                        <div><span class="text-neutral-500">// 其他所有走代理</span></div>
+                        <div><span class="text-blue-600">return</span> <span class="text-white">'PROXY {{PROXY_TARGET}}'</span>;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section id="quick-start" class="py-20 px-4 sm:px-6 lg:px-8 bg-neutral-100">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-neutral-900 mb-4">快速开始</h2>
+                <p class="text-neutral-600">两条命令即可启动服务</p>
+            </div>
+            
+            <div class="code-block p-6 mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-neutral-400 text-sm">终端</span>
+                    <button onclick="copyCode(this)" class="text-neutral-400 hover:text-white text-sm transition-colors">复制</button>
+                </div>
+                <pre class="text-green-400 text-sm"><code>cd /Users/samge/PRO/other/mypac
+python3 server.py</code></pre>
+            </div>
+            
+            <div class="glass-effect rounded-xl p-6 border border-brand-200">
+                <h3 class="font-semibold text-neutral-900 mb-4">客户端配置</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="text-sm font-medium text-neutral-700 mb-2">macOS 系统（全局）</h4>
+                        <ol class="text-sm text-neutral-600 space-y-1 list-decimal list-inside">
+                            <li>系统设置 → 网络 → Wi-Fi → 详细信息 → 代理</li>
+                            <li>勾选 <strong>自动代理配置 (PAC)</strong></li>
+                            <li>URL 填：<code class="bg-neutral-200 px-1 rounded">http://127.0.0.1:10390</code></li>
+                        </ol>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-sm font-medium text-neutral-700 mb-2">ClashX / Surge 等客户端</h4>
+                        <p class="text-sm text-neutral-600">在「外部资源 / PAC」中填入上面的 URL</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Configuration Section -->
+    <section class="py-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-neutral-900 mb-4">配置选项</h2>
+                <p class="text-neutral-600">通过 .env 文件自定义设置</p>
+            </div>
+            
+            <div class="glass-effect rounded-xl overflow-hidden border border-brand-200">
+                <table class="w-full text-sm">
+                    <thead class="bg-brand-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left font-semibold text-neutral-900">变量</th>
+                            <th class="px-6 py-3 text-left font-semibold text-neutral-900">说明</th>
+                            <th class="px-6 py-3 text-left font-semibold text-neutral-900">默认值</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-neutral-200">
+                        <tr>
+                            <td class="px-6 py-4 font-mono text-white">PAC_PORT</td>
+                            <td class="px-6 py-4 text-neutral-700">PAC 服务监听端口</td>
+                            <td class="px-6 py-4 text-neutral-600">10390</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-mono text-white">PROXY_TARGET</td>
+                            <td class="px-6 py-4 text-neutral-700">上游代理地址</td>
+                            <td class="px-6 py-4 text-neutral-600">127.0.0.1:7890</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-mono text-white">LOG_RETAIN_DAYS</td>
+                            <td class="px-6 py-4 text-neutral-700">日志保留天数</td>
+                            <td class="px-6 py-4 text-neutral-600">7</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p class="text-sm text-yellow-800">
+                    <strong>⚠️ 注意：</strong>请确保代理软件已开启「允许局域网连接」，否则局域网设备无法连接代理地址。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-20 px-4 sm:px-6 lg:px-8 bg-neutral-100">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-neutral-900 mb-4">常见问题</h2>
+                <p class="text-neutral-600">修改了 PAC 后客户端不生效？</p>
+            </div>
+            
+            <div class="space-y-4">
+                <details class="glass-effect rounded-lg p-6 border border-brand-200">
+                    <summary class="flex items-center justify-between font-semibold text-neutral-900">
+                        <span>为什么修改 PAC 规则后客户端不生效？</span>
+                        <svg class="w-5 h-5 text-brand-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </summary>
+                    <div class="mt-4 text-neutral-600 space-y-4">
+                        <p>浏览器/操作系统会<strong>缓存</strong> PAC 脚本（通常 30 分钟以上）。即使服务端已更新，客户端仍可能使用旧的缓存规则。</p>
+                        <p>服务端已通过 <code class="bg-neutral-200 px-1 rounded">Cache-Control: no-cache</code> 尽力阻止缓存，但部分系统/浏览器仍会固执缓存，此时需手动按以下方法刷新：</p>
+                    </div>
+                </details>
+                
+                <details class="glass-effect rounded-lg p-6 border border-brand-200">
+                    <summary class="flex items-center justify-between font-semibold text-neutral-900">
+                        <span>Windows 如何刷新 PAC 缓存？</span>
+                        <svg class="w-5 h-5 text-brand-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </summary>
+                    <div class="mt-4 text-neutral-600">
+                        <ol class="space-y-2 list-decimal list-inside">
+                            <li>打开 <strong>设置 → 网络和 Internet → 代理</strong></li>
+                            <li>找到「<strong>自动检测代理配置</strong>」（或「使用设置脚本」）</li>
+                            <li><strong>关闭</strong>开关 → 等待 2 秒 → <strong>重新打开</strong></li>
+                            <li>重启浏览器</li>
+                        </ol>
+                        <p class="mt-2 text-sm text-neutral-500">⚠️ <code>netsh winhttp reset proxy</code> 只重置 WinHTTP 层，无法清除浏览器/系统代理的 PAC 缓存。</p>
+                    </div>
+                </details>
+                
+                <details class="glass-effect rounded-lg p-6 border border-brand-200">
+                    <summary class="flex items-center justify-between font-semibold text-neutral-900">
+                        <span>macOS 如何刷新 PAC 缓存？</span>
+                        <svg class="w-5 h-5 text-brand-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </summary>
+                    <div class="mt-4 text-neutral-600">
+                        <ol class="space-y-2 list-decimal list-inside">
+                            <li><strong>系统设置 → 网络 → Wi-Fi → 详细信息 → 代理</strong></li>
+                            <li>取消勾选「<strong>自动代理配置</strong>」→ 确定</li>
+                            <li>再次进入，重新勾选并填入 PAC URL → 确定</li>
+                            <li>重启浏览器</li>
+                        </ol>
+                    </div>
+                </details>
+                
+                <details class="glass-effect rounded-lg p-6 border border-brand-200">
+                    <summary class="flex items-center justify-between font-semibold text-neutral-900">
+                        <span>Linux (GNOME) 如何刷新？</span>
+                        <svg class="w-5 h-5 text-brand-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </summary>
+                    <div class="mt-4 text-neutral-600">
+                        <ol class="space-y-2 list-decimal list-inside">
+                            <li><strong>设置 → 网络 → 网络代理</strong></li>
+                            <li>将模式从「<strong>自动</strong>」切换为「<strong>无</strong>」→ 应用</li>
+                            <li>再切回「<strong>自动</strong>」，重新填入 PAC URL → 应用</li>
+                            <li>重启浏览器</li>
+                        </ol>
+                    </div>
+                </details>
+                
+                <details class="glass-effect rounded-lg p-6 border border-brand-200">
+                    <summary class="flex items-center justify-between font-semibold text-neutral-900">
+                        <span>浏览器插件如何刷新？</span>
+                        <svg class="w-5 h-5 text-brand-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </summary>
+                    <div class="mt-4 text-neutral-600">
+                        <p>在插件设置中（如 SwitchyOmega）：</p>
+                        <ul class="mt-2 space-y-1 list-disc list-inside">
+                            <li>切到「<strong>直接连接</strong>」→ 切回「<strong>auto switch</strong>」</li>
+                            <li>或直接<strong>禁用再启用</strong>插件</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- Docker Section -->
+    <section class="py-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-neutral-900 mb-4">Docker 部署</h2>
+                <p class="text-neutral-600">一键启动，开箱即用</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="glass-effect rounded-xl p-6 border border-brand-200">
+                    <h3 class="font-semibold text-neutral-900 mb-4 flex items-center">
+                        <svg class="w-5 h-5 text-brand-500 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M13.975 9.205c-.047.017-.09.038-.134.055-.078.03-.152.064-.225.098-.032.015-.062.032-.093.048-.05.025-.098.051-.145.078-.028.016-.054.033-.081.05-.048.03-.092.062-.136.094-.023.017-.045.034-.067.051-.045.036-.085.073-.125.109-.017.015-.034.03-.05.045-.04.04-.076.08-.111.119-.014.015-.028.03-.041.045-.036.043-.067.086-.098.129-.01.014-.021.027-.03.041-.032.047-.06.093-.086.139-.007.012-.015.023-.021.035-.027.052-.05.103-.072.153-.004.01-.01.019-.014.029-.021.054-.04.107-.056.159-.003.009-.007.017-.01.026-.016.056-.03.11-.041.164-.002.009-.005.017-.007.026-.011.058-.02.115-.027.17-.001.008-.003.016-.004.024-.007.061-.012.12-.015.178 0 .006-.002.012-.002.018-.002.062-.003.122-.003.18v.003c0 .058.001.118.003.18 0 .006.002.012.002.018.003.058.008.117.015.178.001.008.003.016.004.024.007.055.016.112.027.17.002.009.005.017.007.026.011.054.025.108.041.164.003.009.007.017.01.026.016.052.035.105.056.159.004.01.01.019.014.029.022.05.045.101.072.153.007.012.014.023.021.035.026.046.054.092.086.139.01.014.02.027.03.041.031.043.062.086.098.129.013.015.027.03.041.045.035.039.071.079.111.119.016.015.033.03.05.045.04.036.08.073.125.109.022.017.044.034.067.051.044.032.088.064.136.094.027.017.053.034.081.05.047.027.095.053.145.078.031.016.061.033.093.048.073.034.147.068.225.098.044.017.087.038.134.055.063.023.128.043.194.062.033.01.065.021.099.03.068.018.137.033.207.047.034.007.067.015.102.021.072.013.145.023.219.032.032.004.064.009.097.012.078.008.157.013.237.017.028.002.056.004.085.005.086.004.173.006.261.006.088 0 .175-.002.261-.006.029-.001.057-.003.085-.005.08-.004.159-.009.237-.017.033-.003.065-.008.097-.012.074-.009.147-.019.219-.032.035-.006.068-.014.102-.021.07-.014.139-.029.207-.047.034-.009.066-.02.099-.03.066-.019.131-.039.194-.062.047-.017.09-.038.134-.055.078-.03.152-.064.225-.098.032-.015.062-.032.093-.048.05-.025.098-.051.145-.078.028-.016.054-.033.081-.05.048-.03.092-.062.136-.094.023-.017.045-.034.067-.051.045-.036.085-.073.125-.109.017-.015.034-.03.05-.045.04-.04.076-.08.111-.119.014-.015.028-.03.041-.045.036-.043.067-.086.098-.129.01-.014.021-.027.03-.041.032-.047.06-.093.086-.139.007-.012.015-.023.021-.035.027-.052.05-.103.072-.153.004-.01.01-.019.014-.029.021-.054.04-.107.056-.159.003-.009.007-.017.01-.026.016-.056.03-.11.041-.164.002-.009.005-.017.007-.026.011-.058.02-.115.027-.17.001-.008.003-.016.004-.024.007-.061.012-.12.015-.178 0-.006.002-.012.002-.018.002-.062.003-.122.003-.18v-.003c0-.058-.001-.118-.003-.18 0-.006-.002-.012-.002-.018-.003-.058-.008-.117-.015-.178-.001-.008-.003-.016-.004-.024-.007-.055-.016-.112-.027-.17-.002-.009-.005-.017-.007-.026-.011-.054-.025-.108-.041-.164-.003-.009-.007-.017-.01-.026-.016-.052-.035-.105-.056-.159-.004-.01-.01-.019-.014-.029-.022-.05-.045-.101-.072-.153-.007-.012-.014-.023-.021-.035-.026-.046-.054-.092-.086-.139-.01-.014-.02-.027-.03-.041-.031-.043-.062-.086-.098-.129-.013-.015-.027-.03-.041-.045-.035-.039-.071-.079-.111-.119-.016-.015-.033-.03-.05-.045-.04-.036-.08-.073-.125-.109-.022-.017-.044-.034-.067-.051-.044-.032-.088-.064-.136-.094-.027-.017-.053-.034-.081-.05-.047-.027-.095-.053-.145-.078-.031-.016-.061-.033-.093-.048-.073-.034-.147-.068-.225-.098-.044-.017-.087-.038-.134-.055-.063-.023-.128-.043-.194-.062-.033-.01-.065-.021-.099-.03-.068-.018-.137-.033-.207-.047-.034-.007-.067-.015-.102-.021-.072-.013-.145-.023-.219-.032-.032-.004-.064-.009-.097-.012-.078-.008-.157-.013-.237-.017-.028-.002-.056-.004-.085-.005-.086-.004-.173-.006-.261-.006-.088 0-.175.002-.261.006-.029.001-.057.003-.085.005-.08.004-.159.009-.237.017-.033.003-.065.008-.097.012-.074.009-.147.019-.219.032-.035.006-.068.014-.102.021-.07.014-.139.029-.207.047-.034.009-.066.02-.099.03-.066.019-.131.039-.194.062zm5.836-1.17c-.014.048-.031.095-.05.142-.009.022-.019.043-.029.064-.016.036-.034.071-.053.105-.013.023-.027.045-.041.067-.018.029-.037.057-.057.084-.017.023-.035.045-.053.067-.019.023-.039.045-.059.066-.021.022-.043.043-.065.063-.019.018-.039.035-.059.051-.024.02-.049.039-.074.057-.019.014-.039.027-.059.04-.027.018-.055.035-.083.051-.019.011-.039.021-.059.031-.031.015-.063.03-.095.043-.018.008-.037.015-.056.022-.035.013-.071.025-.107.036-.017.005-.035.01-.053.014-.04.01-.081.018-.122.025-.014.003-.028.005-.042.007-.047.008-.095.014-.143.019-.009.001-.018.002-.027.003-.054.005-.109.008-.164.01-.004 0-.008.001-.012.001-.061.002-.123.002-.185.001-.004 0-.008-.001-.012-.001-.055-.002-.11-.005-.164-.01-.009-.001-.018-.002-.027-.003-.048-.005-.096-.011-.143-.019-.014-.002-.028-.004-.042-.007-.041-.007-.082-.015-.122-.025-.018-.004-.036-.009-.053-.014-.036-.011-.072-.023-.107-.036-.019-.007-.038-.014-.056-.022-.032-.013-.064-.028-.095-.043-.02-.01-.04-.02-.059-.031-.028-.016-.056-.033-.083-.051-.02-.013-.04-.026-.059-.04-.025-.018-.05-.037-.074-.057-.02-.016-.04-.033-.059-.051-.022-.02-.044-.041-.065-.063-.02-.021-.04-.043-.059-.066-.018-.022-.036-.044-.053-.067-.02-.027-.039-.055-.057-.084-.014-.022-.028-.044-.041-.067-.019-.034-.037-.069-.053-.105-.01-.021-.02-.042-.029-.064-.019-.047-.036-.094-.05-.142-.006-.019-.011-.038-.016-.057-.014-.051-.026-.103-.035-.155-.003-.014-.005-.028-.007-.042-.009-.058-.015-.116-.019-.174-.002-.014-.003-.028-.004-.042-.004-.067-.005-.135-.004-.202.001-.067.004-.135.009-.201.001-.014.003-.028.004-.042.006-.058.014-.115.024-.172.002-.014.005-.028.008-.042.011-.053.024-.105.039-.156.004-.013.009-.026.014-.039.017-.048.036-.095.057-.141.006-.013.013-.026.019-.039.023-.046.048-.091.075-.135.006-.01.013-.02.019-.03.031-.048.064-.095.099-.14.005-.006.01-.013.016-.019.038-.046.079-.09.122-.132.007-.006.013-.013.02-.019.045-.041.092-.08.141-.117.008-.006.016-.012.024-.018.051-.037.104-.071.159-.103.009-.005.019-.01.028-.015.057-.031.116-.059.176-.085.011-.005.022-.009.033-.013.062-.025.125-.047.189-.066.012-.004.025-.007.037-.01.065-.017.131-.031.198-.042.013-.002.027-.004.04-.006.068-.01.137-.016.207-.02.014-.001.029-.002.043-.002.072-.003.144-.003.216.001.014.001.029.002.043.003.07.005.14.013.209.024.013.002.026.005.039.008.067.013.133.029.198.048.012.004.024.007.036.011.064.021.126.046.187.073.011.005.022.01.033.015.059.029.116.06.171.093.009.006.018.012.027.018.049.034.096.071.14.11.008.007.015.014.023.021.043.04.083.082.121.126.006.007.012.014.018.021.036.045.069.092.1.14.007.011.013.022.02.033.028.047.053.096.076.146.006.013.012.026.018.039.022.047.041.096.058.145.004.012.008.024.011.036.016.053.029.107.039.162.002.012.004.024.006.036.01.059.017.119.021.18.001.012.002.024.002.036.004.067.005.135.003.203-.001.067-.005.135-.011.201-.001.012-.003.024-.004.036-.006.059-.014.117-.024.175-.002.012-.005.024-.007.036-.011.053-.024.105-.039.156-.004.013-.009.025-.014.038-.017.048-.036.095-.057.141-.006.013-.013.026-.019.038-.023.046-.048.091-.075.135-.006.01-.013.021-.019.031-.031.048-.064.094-.099.139-.005.007-.011.013-.016.019-.038.046-.079.09-.122.132-.007.007-.014.013-.02.019-.045.041-.092.08-.141.117-.008.006-.016.012-.024.018-.051.037-.104.071-.159.103-.009.005-.019.011-.028.015-.057.031-.116.059-.176.085-.011.005-.022.009-.033.013-.062.025-.125.047-.189.066-.012.004-.025.008-.037.011-.065.016-.131.031-.198.041-.013.002-.027.005-.04.006-.068.011-.137.017-.207.021-.014.001-.029.002-.043.002-.072.003-.144.003-.216-.001-.014-.001-.029-.002-.043-.003-.07-.005-.14-.013-.209-.024-.013-.002-.026-.005-.039-.008-.067-.013-.133-.029-.198-.048-.012-.004-.024-.007-.036-.011-.064-.021-.126-.046-.187-.073-.011-.005-.022-.01-.033-.015-.059-.029-.116-.06-.171-.093-.009-.006-.018-.012-.027-.018-.049-.034-.096-.071-.14-.11-.008-.007-.015-.014-.023-.021-.043-.04-.083-.082-.121-.126-.006-.007-.012-.014-.018-.021-.036-.045-.069-.092-.1-.14-.007-.011-.013-.022-.02-.033-.028-.047-.053-.096-.076-.146-.006-.013-.012-.026-.018-.039-.022-.047-.041-.096-.058-.145-.004-.012-.008-.024-.011-.036-.016-.053-.029-.107-.039-.162-.002-.012-.004-.024-.006-.036-.01-.059-.017-.119-.021-.18-.001-.012-.002-.024-.002-.036-.004-.067-.005-.135-.003-.203zm-3.035-5.847c-.011.048-.025.095-.041.142-.007.022-.015.043-.023.064-.012.036-.026.071-.041.105-.011.023-.022.045-.034.067-.014.029-.03.057-.046.084-.013.023-.027.045-.041.067-.015.023-.031.045-.047.066-.016.022-.034.043-.051.063-.014.018-.03.035-.045.051-.019.02-.039.039-.059.057-.014.014-.03.027-.045.04-.022.018-.045.035-.068.051-.015.011-.031.021-.047.031-.024.015-.049.03-.074.043-.014.008-.029.015-.043.022-.027.013-.055.025-.083.036-.013.005-.026.01-.039.014-.031.01-.063.018-.095.025-.011.003-.022.005-.033.007-.036.008-.073.014-.109.019-.007.001-.014.002-.021.003-.041.005-.083.008-.125.01-.003 0-.006.001-.009.001-.046.002-.093.002-.139.001-.003 0-.006-.001-.009-.001-.042-.002-.084-.005-.125-.01-.007-.001-.014-.002-.021-.003-.036-.005-.073-.011-.109-.019-.011-.002-.022-.004-.033-.007-.032-.007-.064-.015-.095-.025-.013-.004-.026-.009-.039-.014-.028-.011-.056-.023-.083-.036-.014-.007-.029-.014-.043-.022-.025-.013-.05-.026-.074-.043-.015-.013-.03-.026-.045-.04-.02-.018-.04-.037-.059-.057-.015-.016-.031-.033-.045-.051-.017-.022-.033-.044-.047-.066-.016-.022-.032-.044-.046-.067-.014-.027-.03-.055-.046-.084-.012-.022-.023-.044-.034-.067-.015-.034-.029-.069-.041-.105-.008-.021-.016-.042-.023-.064-.016-.047-.03-.094-.041-.142-.005-.019-.009-.038-.013-.057-.011-.051-.02-.103-.027-.155-.002-.014-.004-.028-.005-.042-.007-.058-.011-.116-.014-.174-.001-.014-.002-.028-.003-.042-.003-.067-.003-.135-.001-.202.001-.067.004-.135.008-.201.001-.014.002-.028.003-.042.005-.058.011-.115.019-.172.001-.014.003-.028.005-.042.008-.053.018-.105.029-.156.003-.013.007-.026.011-.039.013-.048.028-.095.045-.141.004-.013.01-.026.015-.039.018-.046.038-.091.06-.135.005-.01.01-.02.015-.03.024-.048.051-.095.079-.14.004-.006.008-.013.012-.019.03-.046.063-.09.098-.132.005-.006.01-.013.016-.019.035-.041.072-.08.111-.117.006-.006.012-.012.019-.018.037-.037.076-.071.117-.103.007-.005.014-.01.021-.015.042-.031.086-.059.131-.085.008-.005.017-.009.026-.013.046-.025.093-.047.141-.066.009-.004.019-.007.029-.01.049-.02.099-.037.15-.052.01-.003.021-.006.031-.009.053-.015.107-.027.162-.037.01-.002.021-.004.031-.006.056-.01.113-.017.17-.022.011-.001.022-.002.033-.002.059-.003.118-.003.177.001.011.001.022.002.033.003.057.005.114.013.17.024.01.002.021.005.031.008.053.014.105.031.155.051.01.004.019.007.029.011.048.019.095.041.14.066.009.005.017.01.026.015.045.029.088.06.129.093.007.006.013.012.019.018.039.034.076.071.11.11.006.007.011.014.017.021.032.045.062.092.089.14.005.011.01.022.015.033.025.047.048.096.068.146.004.013.009.026.013.039.019.047.035.096.049.145.003.012.006.024.009.036.013.053.023.107.031.162.001.012.003.024.004.036.007.059.011.119.013.18.001.012.001.024.001.036.003.067.002.135-.001.203-.002.067-.006.135-.012.201-.001.012-.002.024-.004.036-.006.059-.013.117-.022.175-.001.012-.003.024-.005.036-.008.053-.018.105-.029.156-.003.013-.007.025-.011.038-.013.048-.028.095-.045.141-.004.013-.01.026-.015.038-.018.046-.038.091-.06.135-.005.01-.01.021-.015.031-.024.048-.051.094-.079.139-.004.007-.008.013-.012.019-.03.046-.063.09-.098.132-.005.007-.01.013-.016.019-.035.041-.072.08-.111.117-.006.006-.012.012-.019.018-.037.037-.076.071-.117.103-.007.005-.014.01-.021.015-.042.031-.086.059-.131.085-.008.005-.017.009-.026.013-.046.025-.093.047-.141.066-.009.004-.019.007-.029.01-.049.02-.099.037-.15.052-.01.003-.021.006-.031.009-.053.015-.107.027-.162.037-.01.002-.021.004-.031.006-.056.01-.113.017-.17.022-.011.001-.022.002-.033.002-.059.003-.118.003-.177-.001-.011-.001-.022-.002-.033-.003-.057-.005-.114-.013-.17-.024-.01-.002-.021-.005-.031-.008-.053-.014-.105-.031-.155-.051-.01-.004-.019-.007-.029-.011-.048-.019-.095-.041-.14-.066-.009-.005-.017-.01-.026-.015-.045-.029-.088-.06-.129-.093-.007-.006-.013-.012-.019-.018-.039-.034-.076-.071-.11-.11-.006-.007-.011-.014-.017-.021-.032-.045-.062-.092-.089-.14-.005-.011-.01-.022-.015-.033-.025-.047-.048-.096-.068-.146-.004-.013-.009-.026-.013-.039-.019-.047-.035-.096-.049-.145-.003-.012-.006-.024-.009-.036-.013-.053-.023-.107-.031-.162-.001-.012-.003-.024-.004-.036-.007-.059-.011-.119-.013-.18-.001-.012-.001-.024-.001-.036-.003-.067-.002-.135.001-.203zm5.836 7.017c.014-.048.031-.095.05-.142.009-.022.019-.043.029-.064.016-.036.034-.071.053-.105.013-.023.027-.045.041-.067.018-.029.037-.057.057-.084.017-.023.035-.045.053-.067.019-.023.039-.045.059-.066.021-.022.043-.043.065-.063.019-.018.039-.035.059-.051.024-.02.049-.039.074-.057.019-.014.039-.027.059-.04.027-.018.055-.035.083-.051.019-.011.039-.021.059-.031.031-.015.063-.03.095-.043.018-.008.037-.015.056-.022.035-.013.071-.025.107-.036.017-.005.035-.01.053-.014.04-.01.081-.018.122-.025.014-.003.028-.005.042-.007.047-.008.095-.014.143-.019.009-.001.018-.002.027-.003.054-.005.109-.008.164-.01.004 0 .008-.001.012-.001.061-.002.123-.002.185-.001.004 0 .008.001.012.001.055.002.11.005.164.01.009.001.018.002.027.003.048.005.096.011.143.019.014.002.028.004.042.007.041.007.082.015.122.025.018.004.036.009.053.014.036.011.072.023.107.036.019.007.038.014.056.022.032.013.064.028.095.043.02.01.04.02.059.031.028.016.056.033.083.051.02.013.04.026.059.04.025.018.05.037.074.057.02.016.04.033.059.051.022.02.044.041.065.063.02.021.04.043.059.066.018.022.036.044.053.067.02.027.039.055.057.084.014.022.028.044.041.067.019.034.037.069.053.105.01.021.02.042.029.064.019.047.036.094.05.142.006.019.011.038.016.057.014.051.026.103.035.155.003.014.005.028.007.042.009.058.015.116.019.174.002.014.003.028.004.042.004.067.005.135.004.202-.001.067-.004.135-.009.201-.001.014-.003.028-.004.042-.006.058-.014.115-.024.172-.002.014-.005.028-.008.042-.011.053-.024.105-.039.156-.004.013-.009.026-.014.039-.017.048-.036.095-.057.141-.006.013-.013.026-.019.039-.023.046-.048.091-.075.135-.006.01-.013.02-.019.03-.031.048-.064.095-.099.14-.005.006-.01.013-.016.019-.038.046-.079.09-.122.132-.007.006-.013.013-.02.019-.045.041-.092.08-.141.117-.008.006-.016.012-.024.018-.051.037-.104.071-.159.103-.009.005-.019.01-.028.015-.057.031-.116.059-.176.085-.011.005-.022.009-.033.013-.062.025-.125.047-.189.066-.012.004-.025.007-.037.01-.065.017-.131.031-.198.042-.013.002-.027.004-.04.006-.068.01-.137.016-.207.02-.014.001-.029.002-.043.002-.072.003-.144.003-.216-.001-.014-.001-.029-.002-.043-.003-.07-.005-.14-.013-.209-.024-.013-.002-.026-.005-.039-.008-.067-.013-.133-.029-.198-.048-.012-.004-.024-.007-.036-.011-.064-.021-.126-.046-.187-.073-.011-.005-.022-.01-.033-.015-.059-.029-.116-.06-.171-.093-.009-.006-.018-.012-.027-.018-.049-.034-.096-.071-.14-.11-.008-.007-.015-.014-.023-.021-.043-.04-.083-.082-.121-.126-.006-.007-.012-.014-.018-.021-.036-.045-.069-.092-.1-.14-.007-.011-.013-.022-.02-.033-.028-.047-.053-.096-.076-.146-.006-.013-.012-.026-.018-.039-.022-.047-.041-.096-.058-.145-.004-.012-.008-.024-.011-.036-.016-.053-.029-.107-.039-.162-.002-.012-.004-.024-.006-.036-.01-.059-.017-.119-.021-.18-.001-.012-.002-.024-.002-.036-.004-.067-.005-.135-.003-.203.001-.067.005-.135.011-.201.001-.012.003-.024.004-.036.006-.059.014-.117.024-.175.002-.012.005-.024.007-.036.011-.053.024-.105.039-.156.004-.013.009-.025.014-.038.017-.048.036-.095.057-.141.006-.013.013-.026.019-.038.023-.046.048-.091.075-.135.006-.01.013-.021.019-.031.031-.048.064-.094.099-.139.005-.007.011-.013.016-.019.038-.046.079-.09.122-.132.007-.007.014-.013.02-.019.045-.041.092-.08.141-.117.008-.006.016-.012.024-.018.051-.037.104-.071.159-.103.009-.005.019-.011.028-.015.057-.031.116-.059.176-.085.011-.005.022-.009.033-.013.062-.025.125-.047.189-.066.012-.004.025-.008.037-.011.065-.016.131-.031.198-.041.013-.002.027-.005.04-.006.068-.011.137-.017.207-.021.014-.001.029-.002.043-.002.072-.003.144-.003.216.001.014.001.029.002.043.003.07.005.14.013.209.024.013.002.026.005.039.008.067.013.133.029.198.048.012.004.024.007.036.011.064.021.126.046.187.073.011.005.022.01.033.015.059.029.116.06.171.093.009.006.018.012.027.018.049.034.096.071.14.11.008.007.015.014.023.021.043.04.083.082.121.126.006.007.012.014.018.021.036.045.069.092.1.14.007.011.013.022.02.033.028.047.053.096.076.146.006.013.012.026.018.039.022.047.041.096.058.145.004.012.008.024.011.036.016.053.029.107.039.162.002.012.004.024.006.036.01.059.017.119.021.18.001.012.002.024.002.036.004.067.005.135.003.203z"/>
+                        </svg>
+                        Docker Compose
+                    </h3>
+                    <div class="code-block p-4 text-xs">
+                        <div class="text-green-400"># 1. 创建配置</div>
+                        <div class="text-neutral-300">cp .env.example .env</div>
+                        <div class="text-neutral-500 mt-2"># 2. 构建并启动</div>
+                        <div class="text-neutral-300">docker compose up -d</div>
+                        <div class="text-neutral-500 mt-2"># 3. 查看日志</div>
+                        <div class="text-neutral-300">docker compose logs -f</div>
+                    </div>
+                </div>
+                
+                <div class="glass-effect rounded-xl p-6 border border-brand-200">
+                    <h3 class="font-semibold text-neutral-900 mb-4 flex items-center">
+                        <svg class="w-5 h-5 text-brand-500 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M23.977 6.416c-.105-2.668-1.105-5.206-3.614-6.334-1.557-.69-3.258-.366-4.556.585-.797.577-1.467 1.333-1.98 2.184-.508-.848-1.178-1.607-1.98-2.184-1.298-.951-2.999-1.275-4.556-.585-2.509 1.128-3.509 3.666-3.614 6.334-.014.432-.009.867.016 1.302.101 1.898.667 3.71 1.725 5.285 1.126 1.676 2.732 2.962 4.605 3.658l1.804.649 1.804-.649c1.873-.696 3.479-1.982 4.605-3.658 1.058-1.575 1.624-3.387 1.725-5.285.025-.435.03-.87.016-1.302zm-10.579 5.578l-3.5-3.5 1.414-1.414 2.086 2.086 4.356-4.356 1.414 1.414-5.77 5.77z"/>
+                        </svg>
+                        单条命令运行
+                    </h3>
+                    <div class="code-block p-4 text-xs">
+                        <div class="text-neutral-400">docker run -d \</div>
+                        <div class="text-neutral-300">  --name mypac \</div>
+                        <div class="text-neutral-300">  --restart unless-stopped \</div>
+                        <div class="text-neutral-300">  -p 10390:10390 \</div>
+                        <div class="text-neutral-300">  -e PROXY_TARGET=&lt;IP&gt;:7890 \</div>
+                        <div class="text-neutral-300">  -e PAC_PORT=10390 \</div>
+                        <div class="text-neutral-300">  mypac</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-neutral-900 text-white py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div class="flex items-center space-x-3">
+                    <img src="icon.png" alt="mypac" class="w-8 h-8">
+                    <span class="text-lg font-bold">mypac</span>
+                </div>
+                
+                <div class="text-center md:text-left">
+                    <h4 class="font-semibold mb-3">项目</h4>
+                    <ul class="space-y-2 text-neutral-400">
+                        <li><a href="#features" class="hover:text-white transition-colors">特性</a></li>
+                        <li><a href="#how-it-works" class="hover:text-white transition-colors">工作原理</a></li>
+                        <li><a href="#faq" class="hover:text-white transition-colors">FAQ</a></li>
+                    </ul>
+                </div>
+                
+                <div class="text-center md:text-right">
+                    <h4 class="font-semibold mb-3">链接</h4>
+                    <ul class="space-y-2 text-neutral-400">
+                        <li><a href="https://github.com/samge/mypac" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">GitHub</a></li>
+                        <li><a href="https://github.com/samge/mypac/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">MIT 许可证</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-neutral-800 pt-8 text-center text-neutral-400 text-sm">
+                <p>&copy; 2024 mypac. 基于 MIT 许可证开源。</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function copyCode(button) {
+            const codeBlock = button.parentElement.nextElementSibling;
+            const code = codeBlock.querySelector('code').textContent;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '已复制';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            });
+        }
+        
+        // Smooth scroll for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+        
+        // Add scroll effect to navigation
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('shadow-soft');
+            } else {
+                nav.classList.remove('shadow-soft');
+            }
+        });
+    </script>
+</body>
+</html>
